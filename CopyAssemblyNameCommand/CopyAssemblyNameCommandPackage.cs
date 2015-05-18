@@ -1,24 +1,21 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.ComponentModel.Design;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using EnvDTE;
-using EnvDTE80;
-using Microsoft.Win32;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.OLE.Interop;
-using Microsoft.VisualStudio.Shell;
-using VSLangProj;
-
-namespace tmyt.CopyAssemblyNameCommand
+﻿namespace tmyt.CopyAssemblyNameCommand
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.Runtime.InteropServices;
+    using System.ComponentModel.Design;
+    using System.Linq;
+    using System.Text;
+    using System.Windows.Forms;
+
+    using EnvDTE;
+    using EnvDTE80;
+    using Microsoft.VisualStudio.Shell;
+    using VSLangProj;
+    
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
     ///
@@ -52,8 +49,6 @@ namespace tmyt.CopyAssemblyNameCommand
             Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering constructor for: {0}", this.ToString()));
         }
 
-
-
         /////////////////////////////////////////////////////////////////////////////
         // Overridden Package Implementation
         #region Package Members
@@ -68,12 +63,12 @@ namespace tmyt.CopyAssemblyNameCommand
             base.Initialize();
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
-            OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            OleMenuCommandService mcs = this.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
             if ( null != mcs )
             {
                 // Create the command for the menu item.
-                CommandID menuCommandID = new CommandID(GuidList.guidCopyAssemblyNameCommandCmdSet, (int)PkgCmdIDList.cmdidCopyAssemblyName);
-                MenuCommand menuItem = new MenuCommand(MenuItemCallback, menuCommandID );
+                CommandID menuCommandId = new CommandID(GuidList.guidCopyAssemblyNameCommandCmdSet, (int)PkgCmdIDList.cmdidCopyAssemblyName);
+                MenuCommand menuItem = new MenuCommand(this.MenuItemCallback, menuCommandId );
                 mcs.AddCommand( menuItem );
             }
         }
@@ -87,17 +82,23 @@ namespace tmyt.CopyAssemblyNameCommand
         private void MenuItemCallback(object sender, EventArgs e)
         {
             // Copy assembly name
-            var dte = GetService(typeof(DTE)) as DTE2;
+            var dte = this.GetService(typeof(DTE)) as DTE2;
             var refs = dte.ToolWindows.SolutionExplorer.SelectedItems as IEnumerable;
-            if (refs == null) return;
+
+            if (refs == null)
+            {
+                return;
+            }
+
             var assemblies = refs.OfType<UIHierarchyItem>().Select(i => i.Object).OfType<Reference>()
                 .Select(d =>
                 {
-                    var s = string.Format("{0}, Version={1}, Culture={2}", d.Name, d.Version, string.IsNullOrWhiteSpace(d.Culture) ? "natural" : d.Culture);
-                    if(!string.IsNullOrWhiteSpace(d.PublicKeyToken)) s += string.Format(", PublicKeyToken={0}", d.PublicKeyToken);
+                    var s = string.Format("{0}, Version={1}, Culture={2}", d.Name, d.Version, string.IsNullOrWhiteSpace(d.Culture) ? "neutral" : d.Culture);
+                    if(!string.IsNullOrWhiteSpace(d.PublicKeyToken)) s += string.Format(", PublicKeyToken={0}", d.PublicKeyToken.ToLowerInvariant());
                     return s;
                 })
                 .ToArray();
+
             Clipboard.SetText(string.Join("\r\n", assemblies));
         }
 

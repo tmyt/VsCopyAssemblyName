@@ -45,8 +45,6 @@
         <Parent guid="guidSHLMainMenu" id="IDM_VS_CTXT_REFERENCE"/>
       </Group>
       
-
-
     </Groups>
     
     <!--Buttons section. -->
