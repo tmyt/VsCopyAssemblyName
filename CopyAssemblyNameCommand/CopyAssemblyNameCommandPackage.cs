@@ -14,8 +14,12 @@
     using EnvDTE;
     using EnvDTE80;
     using Microsoft.VisualStudio.Shell;
+    using Microsoft.VisualStudio.Shell.Interop;
+
     using VSLangProj;
     
+    using VSConstants = Microsoft.VisualStudio.Shell.Interop.Constants;
+
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
     ///
@@ -64,12 +68,20 @@
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
             OleMenuCommandService mcs = this.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if ( null != mcs )
+            if (null != mcs)
             {
                 // Create the command for the menu item.
-                CommandID menuCommandId = new CommandID(GuidList.guidCopyAssemblyNameCommandCmdSet, (int)PkgCmdIDList.cmdidCopyAssemblyName);
-                MenuCommand menuItem = new MenuCommand(this.MenuItemCallback, menuCommandId );
-                mcs.AddCommand( menuItem );
+                var cmdidCopyAssemblyNameOnSolutionExplorer = new CommandID(GuidList.guidCopyAssemblyNameCommandSet, (int)PkgCmdIDList.cmdidCopyAssemblyNameOnSolutionExplorer);
+                var menuItemCopyAssemblyNameOnSolutionExplorer = new MenuCommand(this.OnCopyAssemblyNameMenuCommandOnSolutionExplorer, cmdidCopyAssemblyNameOnSolutionExplorer);
+                mcs.AddCommand(menuItemCopyAssemblyNameOnSolutionExplorer);
+
+                var cmdidCopyAssemblyNameOnObjectBrowser = new CommandID(GuidList.guidCopyAssemblyNameCommandSet, (int)PkgCmdIDList.cmdidCopyAssemblyNameOnObjectBrowser);
+                var menuItemCopyAssemblyNameOnObjectBrowser = new MenuCommand(this.OnCopyAssemblyNameMenuCommandOnObjectBrowser, cmdidCopyAssemblyNameOnObjectBrowser);
+                mcs.AddCommand(menuItemCopyAssemblyNameOnObjectBrowser);
+
+                var cmdidCopyFullTypeNameOnObjectrowser = new CommandID(GuidList.guidCopyAssemblyNameCommandSet, (int)PkgCmdIDList.cmdidCopyFullTypeNameOnObjectrowser);
+                var menuItemCopyFullTypeNameOnObjectrowser = new MenuCommand(this.OnCopyFullTypeNameMenuCommandOnObjectBrowser, cmdidCopyFullTypeNameOnObjectrowser);
+                mcs.AddCommand(menuItemCopyFullTypeNameOnObjectrowser);
             }
         }
         #endregion
@@ -79,7 +91,7 @@
         /// See the Initialize method to see how the menu item is associated to this function using
         /// the OleMenuCommandService service and the MenuCommand class.
         /// </summary>
-        private void MenuItemCallback(object sender, EventArgs e)
+        private void OnCopyAssemblyNameMenuCommandOnSolutionExplorer(object sender, EventArgs e)
         {
             // Copy assembly name
             var dte = this.GetService(typeof(DTE)) as DTE2;
@@ -102,5 +114,16 @@
             Clipboard.SetText(string.Join("\r\n", assemblies));
         }
 
+        private void OnCopyAssemblyNameMenuCommandOnObjectBrowser(object sender, EventArgs e)
+        {
+            var browser = this.GetService(typeof(SVsObjBrowser)) as IVsNavigationTool;
+
+            IVsSelectedSymbols symbols;
+            browser.GetSelectedSymbols(out symbols);
+        }
+
+        private void OnCopyFullTypeNameMenuCommandOnObjectBrowser(object sender, EventArgs e)
+        {
+        }
     }
 }
