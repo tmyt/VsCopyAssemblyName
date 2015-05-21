@@ -9,6 +9,5 @@ namespace tmyt.CopyAssemblyNameCommand
         public const uint cmdidCopyAssemblyNameOnSolutionExplorer = 0x100;
 
         public const uint cmdidCopyAssemblyNameOnObjectBrowser = 0x200;
-        public const uint cmdidCopyFullTypeNameOnObjectrowser = 0x201;
     };
 }
