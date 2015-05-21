@@ -1,24 +1,27 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Globalization;
-using System.Runtime.InteropServices;
-using System.ComponentModel.Design;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
-using EnvDTE;
-using EnvDTE80;
-using Microsoft.Win32;
-using Microsoft.VisualStudio;
-using Microsoft.VisualStudio.Shell.Interop;
-using Microsoft.VisualStudio.OLE.Interop;
-using Microsoft.VisualStudio.Shell;
-using VSLangProj;
-
-namespace tmyt.CopyAssemblyNameCommand
+﻿namespace tmyt.CopyAssemblyNameCommand
 {
+    using System;
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.ComponentModel.Design;
+    using System.Diagnostics;
+    using System.Globalization;
+    using System.Linq;
+    using System.Reflection;
+    using System.Runtime.InteropServices;
+    using System.Windows.Forms;
+
+    using EnvDTE;
+
+    using EnvDTE80;
+
+    using Microsoft.VisualStudio.Shell;
+    using Microsoft.VisualStudio.Shell.Interop;
+
+    using VSLangProj;
+
+    using VSConstants = Microsoft.VisualStudio.Shell.Interop.Constants;
+
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
     ///
@@ -34,7 +37,7 @@ namespace tmyt.CopyAssemblyNameCommand
     [PackageRegistration(UseManagedResourcesOnly = true)]
     // This attribute is used to register the information needed to show this package
     // in the Help/About dialog of Visual Studio.
-    [InstalledProductRegistration("#110", "#112", "1.0", IconResourceID = 400)]
+    [InstalledProductRegistration("#110", "#112", "1.0")]
     // This attribute is needed to let the shell know that this package exposes some menus.
     [ProvideMenuResource("Menus.ctmenu", 1)]
     [Guid(GuidList.guidCopyAssemblyNameCommandPkgString)]
@@ -52,10 +55,9 @@ namespace tmyt.CopyAssemblyNameCommand
             Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering constructor for: {0}", this.ToString()));
         }
 
-
-
         /////////////////////////////////////////////////////////////////////////////
         // Overridden Package Implementation
+
         #region Package Members
 
         /// <summary>
@@ -64,19 +66,34 @@ namespace tmyt.CopyAssemblyNameCommand
         /// </summary>
         protected override void Initialize()
         {
-            Debug.WriteLine (string.Format(CultureInfo.CurrentCulture, "Entering Initialize() of: {0}", this.ToString()));
+            Debug.WriteLine(string.Format(CultureInfo.CurrentCulture, "Entering Initialize() of: {0}", this.ToString()));
             base.Initialize();
 
             // Add our command handlers for menu (commands must exist in the .vsct file)
-            OleMenuCommandService mcs = GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
-            if ( null != mcs )
+            OleMenuCommandService mcs = this.GetService(typeof(IMenuCommandService)) as OleMenuCommandService;
+            if (null != mcs)
             {
                 // Create the command for the menu item.
-                CommandID menuCommandID = new CommandID(GuidList.guidCopyAssemblyNameCommandCmdSet, (int)PkgCmdIDList.cmdidCopyAssemblyName);
-                MenuCommand menuItem = new MenuCommand(MenuItemCallback, menuCommandID );
-                mcs.AddCommand( menuItem );
+                var cmdidCopyAssemblyNameOnSolutionExplorer = new CommandID(
+                    GuidList.guidCopyAssemblyNameCommandSet,
+                    (int)PkgCmdIDList.cmdidCopyAssemblyNameOnSolutionExplorer);
+                var menuItemCopyAssemblyNameOnSolutionExplorer =
+                    new MenuCommand(
+                        this.OnCopyAssemblyNameOnSolutionExplorer,
+                        cmdidCopyAssemblyNameOnSolutionExplorer);
+                mcs.AddCommand(menuItemCopyAssemblyNameOnSolutionExplorer);
+
+                var cmdidCopyNameOnObjectBrowser = new CommandID(
+                    GuidList.guidCopyAssemblyNameCommandSet,
+                    (int)PkgCmdIDList.cmdidCopyAssemblyNameOnObjectBrowser);
+                var menuItemCopyNameOnObjectBrowser = new OleMenuCommand(
+                    this.OnCopyNameOnObjectBrowser,
+                    cmdidCopyNameOnObjectBrowser);
+                menuItemCopyNameOnObjectBrowser.BeforeQueryStatus += this.OnBeforeQueryStatusCopyNameOnObjectBrowser;
+                mcs.AddCommand(menuItemCopyNameOnObjectBrowser);
             }
         }
+
         #endregion
 
         /// <summary>
@@ -84,22 +101,152 @@ namespace tmyt.CopyAssemblyNameCommand
         /// See the Initialize method to see how the menu item is associated to this function using
         /// the OleMenuCommandService service and the MenuCommand class.
         /// </summary>
-        private void MenuItemCallback(object sender, EventArgs e)
+        private void OnCopyAssemblyNameOnSolutionExplorer(object sender, EventArgs e)
         {
             // Copy assembly name
-            var dte = GetService(typeof(DTE)) as DTE2;
+            var dte = this.GetService(typeof(DTE)) as DTE2;
+
             var refs = dte.ToolWindows.SolutionExplorer.SelectedItems as IEnumerable;
-            if (refs == null) return;
-            var assemblies = refs.OfType<UIHierarchyItem>().Select(i => i.Object).OfType<Reference>()
+            if (refs == null)
+            {
+                return;
+            }
+
+            var assemblies = refs
+                .OfType<UIHierarchyItem>()
+                .Select(i => i.Object)
+                .OfType<Reference>()
                 .Select(d =>
-                {
-                    var s = string.Format("{0}, Version={1}, Culture={2}", d.Name, d.Version, string.IsNullOrWhiteSpace(d.Culture) ? "natural" : d.Culture);
-                    if(!string.IsNullOrWhiteSpace(d.PublicKeyToken)) s += string.Format(", PublicKeyToken={0}", d.PublicKeyToken);
-                    return s;
-                })
-                .ToArray();
-            Clipboard.SetText(string.Join("\r\n", assemblies));
+                    {
+                        string culture = d.Culture;
+                        if (string.IsNullOrWhiteSpace(culture))
+                        {
+                            culture = "neutral";
+                        }
+
+                        var s = string.Format("{0}, Version={1}, Culture={2}", d.Name, d.Version, culture);
+                        if (!string.IsNullOrWhiteSpace(d.PublicKeyToken))
+                        {
+                            s += string.Format(", PublicKeyToken={0}", d.PublicKeyToken.ToLowerInvariant());
+                        }
+
+                        return s;
+                    });
+
+            Clipboard.SetText(string.Join(Environment.NewLine, assemblies));
         }
 
+        private void OnCopyNameOnObjectBrowser(object sender, EventArgs e)
+        {
+            var selections = this.GetCurrentSelections();
+            string names = string.Join(Environment.NewLine, selections.Select(x => x.Name));
+
+            Clipboard.SetText(names);
+        }
+
+        private void OnBeforeQueryStatusCopyNameOnObjectBrowser(object sender, EventArgs eventArgs)
+        {
+            var menu = sender as OleMenuCommand;
+            if (menu == null)
+            {
+                return;
+            }
+
+            var selections = this.GetCurrentSelections();
+            bool visible = selections.Any(x => x.Type == ItemType.Assembly || x.Type == ItemType.Type);
+
+            menu.Visible = visible;
+        }
+
+        private IEnumerable<SelectedItem> GetCurrentSelections()
+        {
+            var navTools = this.GetService(typeof(SVsObjBrowser)) as IVsNavigationTool;
+            if (navTools == null)
+            {
+                yield break;
+            }
+
+            IVsSelectedSymbols symbols;
+            int hresult = navTools.GetSelectedSymbols(out symbols);
+            Marshal.ThrowExceptionForHR(hresult);
+
+            uint count;
+            hresult = symbols.GetCount(out count);
+            Marshal.ThrowExceptionForHR(hresult);
+
+            for (uint i = 0; i < count; ++i)
+            {
+                IVsSelectedSymbol symbol;
+                hresult = symbols.GetItem(i, out symbol);
+                Marshal.ThrowExceptionForHR(hresult);
+
+                string name;
+                hresult = symbol.GetName(out name);
+                Marshal.ThrowExceptionForHR(hresult);
+
+                IVsNavInfo navInfo;
+                hresult = symbol.GetNavInfo(out navInfo);
+                Marshal.ThrowExceptionForHR(hresult);
+
+                uint symType;
+                hresult = navInfo.GetSymbolType(out symType);
+                Marshal.ThrowExceptionForHR(hresult);
+
+                switch ((_LIB_LISTTYPE)symType)
+                {
+                    case _LIB_LISTTYPE.LLT_CLASSES: // type
+                        IVsEnumNavInfoNodes enin;
+                        hresult = navInfo.EnumCanonicalNodes(out enin);
+                        Marshal.ThrowExceptionForHR(hresult);
+
+                        IVsNavInfoNode[] nodes = new IVsNavInfoNode[1];
+                        uint fetched;
+
+                        while (enin.Next(1, nodes, out fetched) >= 0 && fetched == 1)
+                        {
+                            var node = nodes[0];
+
+                            uint type2;
+
+                            hresult = node.get_Type(out type2);
+                            Marshal.ThrowExceptionForHR(hresult);
+
+                            if (type2 != (uint)_LIB_LISTTYPE.LLT_PHYSICALCONTAINERS)
+                            {
+                                continue;
+                            }
+
+                            string name2;
+                            hresult = node.get_Name(out name2);
+                            Marshal.ThrowExceptionForHR(hresult);
+
+                            var asmName = AssemblyName.GetAssemblyName(name2);
+                            string typeName = Assembly.CreateQualifiedName(asmName.FullName, name);
+
+                            yield return new SelectedItem
+                                {
+                                    Name = typeName,
+                                    Type = ItemType.Type
+                                };
+                        }
+
+                        break;
+
+                    case _LIB_LISTTYPE.LLT_PHYSICALCONTAINERS: // assembly
+                        var asmName2 = AssemblyName.GetAssemblyName(name);
+
+                        yield return new SelectedItem
+                            {
+                                Name = asmName2.FullName,
+                                Type = ItemType.Type
+                            };
+
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+        }
     }
 }
