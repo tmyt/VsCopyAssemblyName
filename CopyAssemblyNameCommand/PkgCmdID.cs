@@ -1,9 +1,7 @@
 ﻿// PkgCmdID.cs
 // MUST match PkgCmdID.h
-namespace tmyt.CopyAssemblyNameCommand
+namespace CopyAssemblyNameCommand
 {
-    using System;
-
     internal static class PkgCmdIDList
     {
         public const uint cmdidCopyAssemblyNameOnSolutionExplorer = 0x100;

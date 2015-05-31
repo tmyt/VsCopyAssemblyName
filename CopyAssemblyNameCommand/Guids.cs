@@ -1,8 +1,9 @@
 ﻿// Guids.cs
 // MUST match guids.h
-namespace tmyt.CopyAssemblyNameCommand
+using System;
+
+namespace CopyAssemblyNameCommand
 {
-    using System;
 
     internal static class GuidList
     {

@@ -1,26 +1,23 @@
-﻿namespace tmyt.CopyAssemblyNameCommand
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.ComponentModel.Design;
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
+using EnvDTE;
+using EnvDTE80;
+using Microsoft.VisualStudio.Shell;
+using Microsoft.VisualStudio.Shell.Interop;
+using VSLangProj;
+using Constants = Microsoft.VisualStudio.Shell.Interop.Constants;
+
+namespace CopyAssemblyNameCommand
 {
-    using System;
-    using System.Collections;
-    using System.Collections.Generic;
-    using System.ComponentModel.Design;
-    using System.Diagnostics;
-    using System.Globalization;
-    using System.Linq;
-    using System.Reflection;
-    using System.Runtime.InteropServices;
-    using System.Windows.Forms;
-
-    using EnvDTE;
-
-    using EnvDTE80;
-
-    using Microsoft.VisualStudio.Shell;
-    using Microsoft.VisualStudio.Shell.Interop;
-
-    using VSLangProj;
-
-    using VSConstants = Microsoft.VisualStudio.Shell.Interop.Constants;
+    using VSConstants = Constants;
 
     /// <summary>
     /// This is the class that implements the package exposed by this assembly.
@@ -118,11 +115,7 @@
                 .OfType<Reference>()
                 .Select(d =>
                     {
-                        string culture = d.Culture;
-                        if (string.IsNullOrWhiteSpace(culture))
-                        {
-                            culture = "neutral";
-                        }
+                        var culture = string.IsNullOrWhiteSpace(d.Culture) ? "neutral" : d.Culture;
 
                         var s = string.Format("{0}, Version={1}, Culture={2}", d.Name, d.Version, culture);
                         if (!string.IsNullOrWhiteSpace(d.PublicKeyToken))
